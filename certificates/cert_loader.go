@@ -9,16 +9,28 @@ import (
 	"os"
 
 	"github.com/goletan/config"
+	sc "github.com/goletan/security/config"
+	"github.com/goletan/security/utils"
 )
+
+var securityConfig sc.SecurityConfig
+
+func init() {
+	// Load the configuration
+	err := config.LoadConfig("security", []string{"."}, &securityConfig, nil)
+	if err != nil {
+		log.Fatalf("Failed to load security config: %v", err)
+	}
+}
 
 // LoadTLSCertificate loads a TLS certificate and private key from specified paths with enhanced security checks.
 func LoadTLSCertificate(certPath, keyPath string) (tls.Certificate, error) {
 	log.Printf("Loading certificate and key from paths: %s, %s", certPath, keyPath)
 
-	if err := CheckFilePermissions(certPath); err != nil {
+	if err := utils.CheckFilePermissions(certPath); err != nil {
 		return tls.Certificate{}, fmt.Errorf("certificate file permission check failed: %w", err)
 	}
-	if err := CheckFilePermissions(keyPath); err != nil {
+	if err := utils.CheckFilePermissions(keyPath); err != nil {
 		return tls.Certificate{}, fmt.Errorf("key file permission check failed: %w", err)
 	}
 
@@ -50,7 +62,7 @@ func LoadTLSCertificate(certPath, keyPath string) (tls.Certificate, error) {
 func LoadCACertificate(caPath string) (*x509.CertPool, error) {
 	log.Printf("Loading CA certificate from path: %s", caPath)
 
-	if err := CheckFilePermissions(caPath); err != nil {
+	if err := utils.CheckFilePermissions(caPath); err != nil {
 		return nil, fmt.Errorf("CA certificate file permission check failed: %w", err)
 	}
 
@@ -70,7 +82,7 @@ func LoadCACertificate(caPath string) (*x509.CertPool, error) {
 
 // LoadServerTLSConfig loads the server's TLS configuration using paths from the configuration.
 func LoadServerTLSConfig() (*tls.Config, error) {
-	certs := config.GlobalConfig.Security.Certificates
+	certs := securityConfig.Security.Certificates
 
 	cert, err := LoadTLSCertificate(certs.ServerCertPath, certs.ServerKeyPath)
 	if err != nil {
@@ -94,7 +106,7 @@ func LoadServerTLSConfig() (*tls.Config, error) {
 
 // LoadClientTLSConfig loads the client's TLS configuration using paths from the configuration.
 func LoadClientTLSConfig() (*tls.Config, error) {
-	certs := config.GlobalConfig.Security.Certificates
+	certs := securityConfig.Security.Certificates
 
 	cert, err := LoadTLSCertificate(certs.ClientCertPath, certs.ClientKeyPath)
 	if err != nil {
