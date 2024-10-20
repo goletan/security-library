@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/goletan/config"
 	sc "github.com/goletan/security/config"
@@ -16,8 +17,16 @@ import (
 var securityConfig sc.SecurityConfig
 
 func init() {
+	configPathsEnv := os.Getenv("SECURITY_CONFIG_PATHS")
+	var configPaths []string
+	if configPathsEnv != "" {
+		configPaths = strings.Split(configPathsEnv, ",")
+	} else {
+		configPaths = []string{"."}
+	}
+
 	// Load the configuration
-	err := config.LoadConfig("security", []string{"."}, &securityConfig, nil)
+	err := config.LoadConfig("security", configPaths, &securityConfig, nil)
 	if err != nil {
 		log.Fatalf("Failed to load security config: %v", err)
 	}
