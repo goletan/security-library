@@ -1,4 +1,4 @@
-package config
+package types
 
 type SecurityConfig struct {
 	Security struct {

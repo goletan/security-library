@@ -4,17 +4,18 @@ package certificates
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"strings"
+	"syscall"
 
 	"github.com/goletan/config"
-	sc "github.com/goletan/security/config"
-	"github.com/goletan/security/utils"
+	"github.com/goletan/security/types"
 )
 
-var securityConfig sc.SecurityConfig
+var cfg types.SecurityConfig
 
 func init() {
 	configPathsEnv := os.Getenv("SECURITY_CONFIG_PATHS")
@@ -26,7 +27,7 @@ func init() {
 	}
 
 	// Load the configuration
-	err := config.LoadConfig("security", configPaths, &securityConfig, nil)
+	err := config.LoadConfig("security", configPaths, &cfg, nil)
 	if err != nil {
 		log.Fatalf("Failed to load security config: %v", err)
 	}
@@ -36,10 +37,10 @@ func init() {
 func LoadTLSCertificate(certPath, keyPath string) (tls.Certificate, error) {
 	log.Printf("Loading certificate and key from paths: %s, %s", certPath, keyPath)
 
-	if err := utils.CheckFilePermissions(certPath); err != nil {
+	if err := checkFilePermissions(certPath); err != nil {
 		return tls.Certificate{}, fmt.Errorf("certificate file permission check failed: %w", err)
 	}
-	if err := utils.CheckFilePermissions(keyPath); err != nil {
+	if err := checkFilePermissions(keyPath); err != nil {
 		return tls.Certificate{}, fmt.Errorf("key file permission check failed: %w", err)
 	}
 
@@ -71,7 +72,7 @@ func LoadTLSCertificate(certPath, keyPath string) (tls.Certificate, error) {
 func LoadCACertificate(caPath string) (*x509.CertPool, error) {
 	log.Printf("Loading CA certificate from path: %s", caPath)
 
-	if err := utils.CheckFilePermissions(caPath); err != nil {
+	if err := checkFilePermissions(caPath); err != nil {
 		return nil, fmt.Errorf("CA certificate file permission check failed: %w", err)
 	}
 
@@ -91,7 +92,7 @@ func LoadCACertificate(caPath string) (*x509.CertPool, error) {
 
 // LoadServerTLSConfig loads the server's TLS configuration using paths from the configuration.
 func LoadServerTLSConfig() (*tls.Config, error) {
-	certs := securityConfig.Security.Certificates
+	certs := cfg.Security.Certificates
 
 	cert, err := LoadTLSCertificate(certs.ServerCertPath, certs.ServerKeyPath)
 	if err != nil {
@@ -115,7 +116,7 @@ func LoadServerTLSConfig() (*tls.Config, error) {
 
 // LoadClientTLSConfig loads the client's TLS configuration using paths from the configuration.
 func LoadClientTLSConfig() (*tls.Config, error) {
-	certs := securityConfig.Security.Certificates
+	certs := cfg.Security.Certificates
 
 	cert, err := LoadTLSCertificate(certs.ClientCertPath, certs.ClientKeyPath)
 	if err != nil {
@@ -135,4 +136,27 @@ func LoadClientTLSConfig() (*tls.Config, error) {
 	}
 
 	return tlsConfig, nil
+}
+
+// checkFilePermissions checks that the file has the correct permissions to prevent unauthorized access and is owned by the current user.
+func checkFilePermissions(filePath string) error {
+	info, err := os.Stat(filePath)
+	if errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err != nil {
+		return fmt.Errorf("unable to access file: %w", err)
+	}
+
+	// Check file permissions (must not be accessible by group or others)
+	if info.Mode().Perm()&(syscall.S_IRWXG|syscall.S_IRWXO) != 0 {
+		return fmt.Errorf("file %s has too permissive permissions", filePath)
+	}
+
+	// Explicitly check for secure permissions (600 or 400)
+	if info.Mode().Perm() != 0600 && info.Mode().Perm() != 0400 {
+		return fmt.Errorf("file %s has invalid permissions: %o, expected 600 or 400", filePath, info.Mode().Perm())
+	}
+
+	return nil
 }

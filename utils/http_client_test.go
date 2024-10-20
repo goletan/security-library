@@ -11,9 +11,9 @@ import (
 // TestInitializeHTTPClient_Success tests the successful initialization of the HTTP client.
 func TestInitializeHTTPClient_Success(t *testing.T) {
 	// Mock configuration for testing
-	config.GlobalConfig.Security.HTTPClient.Timeout = 10
-	config.GlobalConfig.Security.HTTPClient.TLSVersion = "TLS13"
-	config.GlobalConfig.Security.HTTPClient.MaxIdleConnectionsPerHost = 10
+	config.Security.HTTPClient.Timeout = 10
+	config.Security.HTTPClient.TLSVersion = "TLS13"
+	config.Security.HTTPClient.MaxIdleConnectionsPerHost = 10
 
 	err := InitializeHTTPClient()
 	if err != nil {

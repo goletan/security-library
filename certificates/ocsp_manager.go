@@ -16,7 +16,7 @@ import (
 )
 
 // Cache structures for OCSP responses
-type ocspCacheEntry struct {
+type OCSPCacheEntry struct {
 	response *ocsp.Response
 	expiry   time.Time
 }
@@ -26,7 +26,7 @@ type OCSPManager struct {
 	CacheTTL        time.Duration
 	HTTPClient      *http.Client
 	OCSPRequestFunc func(string, string, io.Reader) (*http.Response, error)
-	cache           map[string]ocspCacheEntry
+	cache           map[string]OCSPCacheEntry
 	cacheLock       sync.Mutex
 }
 
@@ -41,7 +41,7 @@ func NewOCSPManager(httpClient *http.Client, ocspRequestFunc func(string, string
 		CacheTTL:        cacheTTL,
 		HTTPClient:      httpClient,
 		OCSPRequestFunc: ocspRequestFunc,
-		cache:           make(map[string]ocspCacheEntry),
+		cache:           make(map[string]OCSPCacheEntry),
 	}
 }
 
@@ -87,7 +87,7 @@ func (o *OCSPManager) CheckOCSP(cert, issuer *x509.Certificate) (*ocsp.Response,
 func (o *OCSPManager) CacheOCSPResponse(cert *x509.Certificate, ocspResp *ocsp.Response) {
 	o.cacheLock.Lock()
 	defer o.cacheLock.Unlock()
-	o.cache[cert.SerialNumber.String()] = ocspCacheEntry{
+	o.cache[cert.SerialNumber.String()] = OCSPCacheEntry{
 		response: ocspResp,
 		expiry:   time.Now().Add(o.CacheTTL),
 	}
@@ -138,7 +138,7 @@ func sendOCSPRequest(url string, request []byte, issuer *x509.Certificate) (*ocs
 // CacheOCSPResponse stores an OCSP response in cache
 func CacheOCSPResponse(cert *x509.Certificate, ocspResp *ocsp.Response) {
 	log.Printf("Caching OCSP response for certificate: %s", cert.SerialNumber)
-	ocspCache.Store(cert.SerialNumber.String(), ocspCacheEntry{
+	ocspCache.Store(cert.SerialNumber.String(), OCSPCacheEntry{
 		response: ocspResp,
 		expiry:   time.Now().Add(cacheTTL),
 	})
@@ -151,7 +151,7 @@ func GetCachedOCSPResponse(cert *x509.Certificate) (*ocsp.Response, bool) {
 		return nil, false
 	}
 
-	cacheEntry := entry.(ocspCacheEntry)
+	cacheEntry := entry.(OCSPCacheEntry)
 	if time.Now().After(cacheEntry.expiry) {
 		ocspCache.Delete(cert.SerialNumber.String())
 		return nil, false

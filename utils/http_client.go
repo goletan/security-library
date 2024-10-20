@@ -1,5 +1,5 @@
 // /security/utils/http_client.go
-package utils
+package security
 
 import (
 	"crypto/tls"
