@@ -1,5 +1,5 @@
 // /security/utils/http_client.go
-package security
+package utils
 
 import (
 	"crypto/tls"
@@ -10,22 +10,33 @@ import (
 	"time"
 
 	"github.com/goletan/config"
+	"github.com/goletan/security/types"
 )
 
-// Shared HTTP client with configuration for graceful shutdown
-var httpClient *http.Client
+var (
+	// Shared HTTP client with configuration for graceful shutdown
+	httpClient *http.Client
+	// Security Config for HTTP Client configuration
+	cfg types.SecurityConfig
+)
 
 // InitializeHTTPClient configures the shared HTTP client with enhanced security settings.
 func InitializeHTTPClient() error {
+	// Load the configuration
+	err := config.LoadConfig("Security", &cfg, nil)
+	if err != nil {
+		log.Fatalf("Failed to load security config: %v", err)
+	}
+
 	// Fetch configuration values with safe defaults
-	timeout := time.Duration(config.GlobalConfig.Security.HTTPClient.Timeout) * time.Second
+	timeout := time.Duration(cfg.Security.HTTPClient.Timeout) * time.Second
 	if timeout == 0 {
 		log.Println("Invalid or missing timeout configuration, defaulting to 10 seconds")
 		timeout = 10 * time.Second
 	}
 
 	// Fetch TLS version from configuration
-	tlsVersion, err := getTLSVersion(config.GlobalConfig.Security.HTTPClient.TLSVersion)
+	tlsVersion, err := getTLSVersion(cfg.Security.HTTPClient.TLSVersion)
 	if err != nil {
 		log.Printf("Invalid or missing TLS version configuration, defaulting to TLS 1.3")
 		tlsVersion = tls.VersionTLS13
@@ -33,7 +44,7 @@ func InitializeHTTPClient() error {
 
 	transport := &http.Transport{
 		IdleConnTimeout:       10 * time.Second,
-		MaxIdleConnsPerHost:   config.GlobalConfig.Security.HTTPClient.MaxIdleConnectionsPerHost,
+		MaxIdleConnsPerHost:   cfg.Security.HTTPClient.MaxIdleConnectionsPerHost,
 		MaxConnsPerHost:       100,
 		DisableKeepAlives:     false,
 		TLSHandshakeTimeout:   5 * time.Second,

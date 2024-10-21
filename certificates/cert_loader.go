@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"syscall"
 
 	"github.com/goletan/config"
@@ -16,22 +15,6 @@ import (
 )
 
 var cfg types.SecurityConfig
-
-func init() {
-	configPathsEnv := os.Getenv("SECURITY_CONFIG_PATHS")
-	var configPaths []string
-	if configPathsEnv != "" {
-		configPaths = strings.Split(configPathsEnv, ",")
-	} else {
-		configPaths = []string{"."}
-	}
-
-	// Load the configuration
-	err := config.LoadConfig("security", configPaths, &cfg, nil)
-	if err != nil {
-		log.Fatalf("Failed to load security config: %v", err)
-	}
-}
 
 // LoadTLSCertificate loads a TLS certificate and private key from specified paths with enhanced security checks.
 func LoadTLSCertificate(certPath, keyPath string) (tls.Certificate, error) {
@@ -116,6 +99,12 @@ func LoadServerTLSConfig() (*tls.Config, error) {
 
 // LoadClientTLSConfig loads the client's TLS configuration using paths from the configuration.
 func LoadClientTLSConfig() (*tls.Config, error) {
+	// Load the configuration
+	err := config.LoadConfig("Security", &cfg, nil)
+	if err != nil {
+		log.Fatalf("Failed to load security config: %v", err)
+	}
+
 	certs := cfg.Security.Certificates
 
 	cert, err := LoadTLSCertificate(certs.ClientCertPath, certs.ClientKeyPath)
