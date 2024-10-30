@@ -2,12 +2,14 @@ module github.com/goletan/security
 
 go 1.23.2
 
-replace github.com/goletan/config => ../config
-
 require (
 	github.com/goletan/config v0.0.0-00010101000000-000000000000
 	golang.org/x/crypto v0.28.0
 )
+
+replace github.com/goletan/config => ../config
+
+replace github.com/goletan/observability => ../observability
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
