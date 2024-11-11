@@ -1,4 +1,4 @@
-// /security/utils/http_client_test.go
+// /security/internal/utils/http_client_test.go
 package utils
 
 import (

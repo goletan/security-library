@@ -1,4 +1,4 @@
-// /security/certificates/crl_manager_test.go
+// /security/internal/certificates/crl_manager_test.go
 package certificates
 
 import (

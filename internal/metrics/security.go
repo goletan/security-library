@@ -1,7 +1,8 @@
+// /security/internal/metrics/security.go
 package security
 
 import (
-	"github.com/goletan/observability/metrics"
+	observability "github.com/goletan/observability/pkg"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -20,8 +21,8 @@ var (
 	)
 )
 
-func InitMetrics() {
-	metrics.NewManager().Register(&SecurityMetrics{})
+func InitMetrics(observer *observability.Observability) {
+	observer.Metrics.Register(&SecurityMetrics{})
 }
 
 func (em *SecurityMetrics) Register() error {

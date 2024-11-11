@@ -1,4 +1,4 @@
-// /security/certificates/ocsp_manager_test.go
+// /security/internal/certificates/ocsp_manager_test.go
 package certificates
 
 import (

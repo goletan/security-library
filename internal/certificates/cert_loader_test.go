@@ -1,4 +1,4 @@
-// /security/certificates/cert_loader_test.go
+// /security/internal/certificates/cert_loader_test.go
 package certificates
 
 import (

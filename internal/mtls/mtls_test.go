@@ -1,4 +1,4 @@
-// /security/mtls/mtls_test.go
+// /security/internal/mtls/mtls_test.go
 package mtls
 
 import (
