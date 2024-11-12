@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/goletan/config"
+	config "github.com/goletan/config/pkg"
 	"github.com/goletan/security/internal/certificates"
 	"github.com/goletan/security/internal/mtls"
 	"github.com/goletan/security/internal/types"
