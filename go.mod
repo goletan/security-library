@@ -3,16 +3,16 @@ module github.com/goletan/security
 go 1.23
 
 require (
-	github.com/goletan/config v0.0.0-00010101000000-000000000000
+	github.com/goletan/config v0.0.0-20241117132450-f61d955a9e0c
 	github.com/goletan/observability v0.0.0-00010101000000-000000000000
 	github.com/prometheus/client_golang v1.20.5
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.28.0
 )
 
-replace github.com/goletan/config => ../config
+replace github.com/goletan/config => github.com/goletan/config v0.0.0-20241117132450-f61d955a9e0c
 
-replace github.com/goletan/observability => ../observability
+replace github.com/goletan/observability => github.com/goletan/observability v0.0.0-20241117132404-5648f11b3f84
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
