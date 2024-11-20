@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	config "github.com/goletan/config/pkg"
 	"github.com/goletan/security/internal/certificates"
+	"github.com/goletan/security/internal/config"
 	"github.com/goletan/security/internal/mtls"
 	"github.com/goletan/security/internal/types"
 	"github.com/goletan/security/internal/utils"
@@ -37,11 +37,9 @@ type SecurityInterface interface {
 // NewSecurity initializes a new Security instance.
 func NewSecurity(logger *zap.Logger) (*Security, error) {
 	// Load configuration
-	var cfg *types.SecurityConfig
-	err := config.LoadConfig("Security", &cfg, nil)
+	cfg, err := config.LoadSecurityConfig(logger)
 	if err != nil {
-		logger.Fatal("Failed to load security config", zap.Error(err))
-		return nil, err
+		logger.Warn("Failed to load security configuration, proceeding with defaults")
 	}
 
 	// Initialize shared HTTP client
