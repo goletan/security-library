@@ -1,3 +1,4 @@
+// /security/internal/config/config.go
 package config
 
 import (
@@ -6,10 +7,10 @@ import (
 	"go.uber.org/zap"
 )
 
-var cfg types.SecurityConfig
-
+// LoadSecurityConfig loads security-related configuration into a SecurityConfig struct.
 func LoadSecurityConfig(logger *zap.Logger) (*types.SecurityConfig, error) {
-	if err := config.LoadConfig("Security", &cfg, logger); err != nil {
+	cfg := &types.SecurityConfig{}
+	if err := config.LoadConfig("Security", cfg, logger); err != nil {
 		logger.Error(
 			"Failed to load security configuration",
 			zap.Error(err),
@@ -18,5 +19,5 @@ func LoadSecurityConfig(logger *zap.Logger) (*types.SecurityConfig, error) {
 		return nil, err
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }

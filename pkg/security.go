@@ -42,6 +42,10 @@ func NewSecurity(logger *zap.Logger) (*Security, error) {
 		logger.Warn("Failed to load security configuration, proceeding with defaults")
 	}
 
+	if cfg == nil {
+		return nil, fmt.Errorf("security configuration is nil after loading")
+	}
+
 	// Initialize shared HTTP client
 	httpClient, err := utils.InitializeHTTPClient(cfg)
 	if err != nil {
@@ -60,6 +64,7 @@ func NewSecurity(logger *zap.Logger) (*Security, error) {
 
 	// Create Security instance
 	security := &Security{
+		Cfg:           cfg,
 		CertLoader:    certLoader,
 		CertValidator: certValidator,
 		CRLManager:    crlManager,
