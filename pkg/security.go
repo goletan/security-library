@@ -7,10 +7,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/goletan/security/config"
 	"github.com/goletan/security/internal/certificates"
-	"github.com/goletan/security/internal/config"
 	"github.com/goletan/security/internal/mtls"
-	"github.com/goletan/security/internal/types"
 	"github.com/goletan/security/internal/utils"
 	"go.uber.org/zap"
 )
@@ -35,17 +34,7 @@ type SecurityInterface interface {
 }
 
 // NewSecurity initializes a new Security instance.
-func NewSecurity(logger *zap.Logger) (*Security, error) {
-	// Load configuration
-	cfg, err := config.LoadSecurityConfig(logger)
-	if err != nil {
-		logger.Warn("Failed to load security configuration, proceeding with defaults")
-	}
-
-	if cfg == nil {
-		return nil, fmt.Errorf("security configuration is nil after loading")
-	}
-
+func NewSecurity(cfg *config.SecurityConfig, logger *zap.Logger) (*Security, error) {
 	// Initialize shared HTTP client
 	httpClient, err := utils.InitializeHTTPClient(cfg)
 	if err != nil {
@@ -54,10 +43,10 @@ func NewSecurity(logger *zap.Logger) (*Security, error) {
 	}
 
 	// Initialize certificate components
-	certLoader := certificates.NewCertLoader(logger, cfg)
-	certValidator := certificates.NewCertValidator(logger, cfg, httpClient)
-	crlManager := certificates.NewCRLManager(logger, cfg, httpClient)
-	ocspManager := certificates.NewOCSPManager(logger, cfg, httpClient, certificates.RealOCSPRequest)
+	certLoader := certificates.NewCertLoader(cfg, logger)
+	certValidator := certificates.NewCertValidator(cfg, logger, httpClient)
+	crlManager := certificates.NewCRLManager(cfg, logger, httpClient)
+	ocspManager := certificates.NewOCSPManager(cfg, logger, httpClient, certificates.RealOCSPRequest)
 
 	// Initialize mTLS component
 	mtlsHandler := mtls.NewMTLS(logger, certLoader, certValidator)

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goletan/security/internal/types"
+	"github.com/goletan/security/config"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ocsp"
 )
@@ -32,7 +32,7 @@ type OCSPManager struct {
 }
 
 // NewOCSPManager initializes an OCSP manager with the given configuration.
-func NewOCSPManager(logger *zap.Logger, cfg *types.SecurityConfig, httpClient *http.Client, ocspRequestFunc func(*http.Client, string, string, io.Reader) (*http.Response, error)) *OCSPManager {
+func NewOCSPManager(cfg *config.SecurityConfig, logger *zap.Logger, httpClient *http.Client, ocspRequestFunc func(*http.Client, string, string, io.Reader) (*http.Response, error)) *OCSPManager {
 	return &OCSPManager{
 		CacheTTL:        cfg.Security.OCSP.TTL,
 		HTTPClient:      httpClient,

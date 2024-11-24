@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/goletan/security/internal/types"
+	"github.com/goletan/security/config"
 )
 
 // InitializeHTTPClient configures the HTTP client with enhanced security settings.
-func InitializeHTTPClient(cfg *types.SecurityConfig) (*http.Client, error) {
+func InitializeHTTPClient(cfg *config.SecurityConfig) (*http.Client, error) {
 	// Fetch TLS version from configuration
 	tlsVersion, err := GetTLSVersion(cfg.Security.HTTPClient.TLSVersion)
 	if err != nil {

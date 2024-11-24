@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goletan/security/internal/types"
+	"github.com/goletan/security/config"
 	"go.uber.org/zap"
 )
 
@@ -29,7 +29,7 @@ type crlCacheEntry struct {
 }
 
 // NewCRLManager initializes a new CRLManager with the given parameters.
-func NewCRLManager(logger *zap.Logger, cfg *types.SecurityConfig, httpClient *http.Client) *CRLManager {
+func NewCRLManager(cfg *config.SecurityConfig, logger *zap.Logger, httpClient *http.Client) *CRLManager {
 	return &CRLManager{
 		logger:     logger,
 		httpClient: httpClient,

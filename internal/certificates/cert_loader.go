@@ -10,18 +10,18 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/goletan/security/internal/types"
+	"github.com/goletan/security/config"
 	"github.com/goletan/security/internal/utils"
 	"go.uber.org/zap"
 )
 
 type CertLoader struct {
-	Cfg    *types.SecurityConfig
+	Cfg    *config.SecurityConfig
 	logger *zap.Logger
 }
 
 // NewCertLoader initializes a new CertLoader with the required configuration and logger.
-func NewCertLoader(logger *zap.Logger, cfg *types.SecurityConfig) *CertLoader {
+func NewCertLoader(cfg *config.SecurityConfig, logger *zap.Logger) *CertLoader {
 	return &CertLoader{
 		Cfg:    cfg,
 		logger: logger,

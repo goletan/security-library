@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goletan/security/internal/types"
+	"github.com/goletan/security/config"
 	"github.com/goletan/security/internal/utils"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ocsp"
@@ -33,7 +33,7 @@ type RetryPolicy struct {
 }
 
 // NewCertValidator initializes a new CertValidator with the provided logger and HTTP client.
-func NewCertValidator(logger *zap.Logger, cfg *types.SecurityConfig, httpClient *http.Client) *CertValidator {
+func NewCertValidator(cfg *config.SecurityConfig, logger *zap.Logger, httpClient *http.Client) *CertValidator {
 	return &CertValidator{
 		logger:      logger,
 		crlCache:    make(map[string]*x509.RevocationList),

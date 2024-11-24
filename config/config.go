@@ -1,9 +1,7 @@
-// /security/internal/types/security.go
-package types
+// /security/internal/config/config.go
+package config
 
-import (
-	"time"
-)
+import "time"
 
 type SecurityConfig struct {
 	Security struct {
