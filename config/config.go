@@ -1,4 +1,3 @@
-// /security/internal/config/config.go
 package config
 
 import "time"

@@ -1,10 +1,10 @@
-// /security/internal/certificates/ocsp_manager.go
 package certificates
 
 import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	observability "github.com/goletan/observability/pkg"
 	"io"
 	"net/http"
 	"strings"
@@ -27,27 +27,27 @@ type OCSPManager struct {
 	CacheTTL        time.Duration
 	HTTPClient      *http.Client
 	OCSPRequestFunc func(*http.Client, string, string, io.Reader) (*http.Response, error)
-	logger          *zap.Logger
+	obs             *observability.Observability
 	cache           sync.Map // Use sync.Map for concurrent access
 }
 
 // NewOCSPManager initializes an OCSP manager with the given configuration.
-func NewOCSPManager(cfg *config.SecurityConfig, logger *zap.Logger, httpClient *http.Client, ocspRequestFunc func(*http.Client, string, string, io.Reader) (*http.Response, error)) *OCSPManager {
+func NewOCSPManager(cfg *config.SecurityConfig, obs *observability.Observability, httpClient *http.Client, ocspRequestFunc func(*http.Client, string, string, io.Reader) (*http.Response, error)) *OCSPManager {
 	return &OCSPManager{
 		CacheTTL:        cfg.Security.OCSP.TTL,
 		HTTPClient:      httpClient,
 		OCSPRequestFunc: ocspRequestFunc,
-		logger:          logger,
+		obs:             obs,
 	}
 }
 
 // CheckOCSP performs an OCSP check using the issuer's certificate to validate the revocation status.
 func (o *OCSPManager) CheckOCSP(cert, issuer *x509.Certificate) (*ocsp.Response, error) {
-	o.logger.Info("Checking OCSP for certificate", zap.String("CN", cert.Subject.CommonName))
+	o.obs.Logger.Info("Checking OCSP for certificate", zap.String("CN", cert.Subject.CommonName))
 
 	// Check if the OCSP response is already cached
 	if cachedResponse, found := o.GetCachedOCSPResponse(cert); found {
-		o.logger.Info("Using cached OCSP response", zap.String("serialNumber", cert.SerialNumber.String()))
+		o.obs.Logger.Info("Using cached OCSP response", zap.String("serialNumber", cert.SerialNumber.String()))
 		return cachedResponse, nil
 	}
 
@@ -59,7 +59,7 @@ func (o *OCSPManager) CheckOCSP(cert, issuer *x509.Certificate) (*ocsp.Response,
 	// Attempt to create an OCSP request
 	ocspRequest, err := ocsp.CreateRequest(cert, issuer, nil)
 	if err != nil {
-		o.logger.Error("Error creating OCSP request", zap.Error(err))
+		o.obs.Logger.Error("Error creating OCSP request", zap.Error(err))
 		return nil, fmt.Errorf("failed to create OCSP request: %w", err)
 	}
 
@@ -81,7 +81,7 @@ func (o *OCSPManager) sendOCSPRequestWithRetry(ocspURL string, request []byte, r
 	var err error
 
 	for attempt := 1; attempt <= retries; attempt++ {
-		o.logger.Info("Sending OCSP request", zap.String("ocspURL", ocspURL), zap.Int("attempt", attempt))
+		o.obs.Logger.Info("Sending OCSP request", zap.String("ocspURL", ocspURL), zap.Int("attempt", attempt))
 
 		httpResp, err := o.OCSPRequestFunc(o.HTTPClient, ocspURL, "application/ocsp-request", strings.NewReader(string(request)))
 		if err == nil {
@@ -89,25 +89,25 @@ func (o *OCSPManager) sendOCSPRequestWithRetry(ocspURL string, request []byte, r
 
 			ocspBytes, err := io.ReadAll(httpResp.Body)
 			if err != nil {
-				o.logger.Error("Failed to read OCSP response", zap.Error(err))
+				o.obs.Logger.Error("Failed to read OCSP response", zap.Error(err))
 				return nil, fmt.Errorf("failed to read OCSP response: %w", err)
 			}
 
 			ocspResp, err = ocsp.ParseResponse(ocspBytes, nil)
 			if err != nil {
-				o.logger.Error("Failed to parse OCSP response", zap.Error(err))
+				o.obs.Logger.Error("Failed to parse OCSP response", zap.Error(err))
 				return nil, fmt.Errorf("failed to parse OCSP response: %w", err)
 			}
 
 			if ocspResp.Status == ocsp.Revoked {
-				o.logger.Warn("Certificate is revoked according to OCSP", zap.String("ocspURL", ocspURL))
+				o.obs.Logger.Warn("Certificate is revoked according to OCSP", zap.String("ocspURL", ocspURL))
 				return ocspResp, errors.New("certificate is revoked")
 			}
 
 			return ocspResp, nil
 		}
 
-		o.logger.Warn("Failed to send OCSP request, retrying...", zap.String("ocspURL", ocspURL), zap.Int("attempt", attempt), zap.Error(err))
+		o.obs.Logger.Warn("Failed to send OCSP request, retrying...", zap.String("ocspURL", ocspURL), zap.Int("attempt", attempt), zap.Error(err))
 		time.Sleep(backoff)
 	}
 
@@ -121,7 +121,7 @@ func (o *OCSPManager) CacheOCSPResponse(cert *x509.Certificate, ocspResp *ocsp.R
 		expiry:   time.Now().Add(o.CacheTTL),
 	}
 	o.cache.Store(cert.SerialNumber.String(), entry)
-	o.logger.Info("OCSP response cached successfully", zap.String("serialNumber", cert.SerialNumber.String()))
+	o.obs.Logger.Info("OCSP response cached successfully", zap.String("serialNumber", cert.SerialNumber.String()))
 }
 
 // GetCachedOCSPResponse retrieves a cached OCSP response if it exists and is still valid.
@@ -135,7 +135,7 @@ func (o *OCSPManager) GetCachedOCSPResponse(cert *x509.Certificate) (*ocsp.Respo
 	if time.Now().After(entry.expiry) {
 		// If the OCSP response is expired, remove it from the cache
 		o.cache.Delete(cert.SerialNumber.String())
-		o.logger.Info("OCSP response expired and removed from cache", zap.String("serialNumber", cert.SerialNumber.String()))
+		o.obs.Logger.Info("OCSP response expired and removed from cache", zap.String("serialNumber", cert.SerialNumber.String()))
 		return nil, false
 	}
 

@@ -1,4 +1,3 @@
-// /security/internal/mtls/mtls.go
 package mtls
 
 import (
@@ -6,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	observability "github.com/goletan/observability/pkg"
 
 	"github.com/goletan/security/internal/certificates"
 	"go.uber.org/zap"
@@ -15,15 +15,15 @@ import (
 type MTLS struct {
 	certLoader    *certificates.CertLoader
 	certValidator *certificates.CertValidator
-	logger        *zap.Logger
+	obs           *observability.Observability
 }
 
 // NewMTLS initializes a new MTLS instance with the required dependencies.
-func NewMTLS(logger *zap.Logger, certLoader *certificates.CertLoader, certValidator *certificates.CertValidator) *MTLS {
+func NewMTLS(obs *observability.Observability, certLoader *certificates.CertLoader, certValidator *certificates.CertValidator) *MTLS {
 	return &MTLS{
 		certLoader:    certLoader,
 		certValidator: certValidator,
-		logger:        logger,
+		obs:           obs,
 	}
 }
 
@@ -32,14 +32,14 @@ func (m *MTLS) ConfigureMTLS(ctx context.Context) (*tls.Config, error) {
 	// Load the server TLS configuration
 	serverCert, err := m.certLoader.LoadTLSCertificate(m.certLoader.Cfg.Security.Certificates.ServerCertPath, m.certLoader.Cfg.Security.Certificates.ServerKeyPath)
 	if err != nil {
-		m.logger.Error("Failed to load server certificate and key", zap.Error(err))
+		m.obs.Logger.Error("Failed to load server certificate and key", zap.Error(err))
 		return nil, fmt.Errorf("failed to load server certificate and key: %w", err)
 	}
 
 	// Load the CA certificate pool
 	caCertPool, _, err := m.certLoader.LoadCACertificate(m.certLoader.Cfg.Security.Certificates.CACertPath)
 	if err != nil {
-		m.logger.Error("Failed to load CA certificate", zap.Error(err))
+		m.obs.Logger.Error("Failed to load CA certificate", zap.Error(err))
 		return nil, fmt.Errorf("failed to load CA certificate: %w", err)
 	}
 
@@ -57,11 +57,11 @@ func (m *MTLS) ConfigureMTLS(ctx context.Context) (*tls.Config, error) {
 			tls.TLS_CHACHA20_POLY1305_SHA256,
 		},
 		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-			m.logger.Info("Verifying peer certificate")
+			m.obs.Logger.Info("Verifying peer certificate")
 			return m.certValidator.VerifyPeerCertificate(rawCerts, verifiedChains)
 		},
 	}
 
-	m.logger.Info("mTLS configuration successfully completed with enhanced security and revocation checks.")
+	m.obs.Logger.Info("mTLS configuration successfully completed with enhanced security and revocation checks.")
 	return tlsConfig, nil
 }

@@ -1,4 +1,3 @@
-// /security/pkg/security.go
 package security
 
 import (
@@ -7,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/goletan/observability/pkg"
 	"github.com/goletan/security/config"
 	"github.com/goletan/security/internal/certificates"
 	"github.com/goletan/security/internal/mtls"
@@ -16,13 +16,13 @@ import (
 
 // Security is the main entry point for all security-related operations in Goletan.
 type Security struct {
-	Cfg           *types.SecurityConfig
+	Cfg           *config.SecurityConfig
 	CertLoader    *certificates.CertLoader
 	CertValidator *certificates.CertValidator
 	CRLManager    *certificates.CRLManager
 	OCSPManager   *certificates.OCSPManager
 	MTLSHandler   *mtls.MTLS
-	Logger        *zap.Logger
+	Observability *observability.Observability
 }
 
 type SecurityInterface interface {
@@ -34,22 +34,22 @@ type SecurityInterface interface {
 }
 
 // NewSecurity initializes a new Security instance.
-func NewSecurity(cfg *config.SecurityConfig, logger *zap.Logger) (*Security, error) {
+func NewSecurity(cfg *config.SecurityConfig, obs *observability.Observability) (*Security, error) {
 	// Initialize shared HTTP client
 	httpClient, err := utils.InitializeHTTPClient(cfg)
 	if err != nil {
-		logger.Fatal("Failed to initialize HTTP client", zap.Error(err))
+		obs.Logger.Fatal("Failed to initialize HTTP client", zap.Error(err))
 		return nil, err
 	}
 
 	// Initialize certificate components
-	certLoader := certificates.NewCertLoader(cfg, logger)
-	certValidator := certificates.NewCertValidator(cfg, logger, httpClient)
-	crlManager := certificates.NewCRLManager(cfg, logger, httpClient)
-	ocspManager := certificates.NewOCSPManager(cfg, logger, httpClient, certificates.RealOCSPRequest)
+	certLoader := certificates.NewCertLoader(cfg, obs)
+	certValidator := certificates.NewCertValidator(cfg, obs, httpClient)
+	crlManager := certificates.NewCRLManager(cfg, obs, httpClient)
+	ocspManager := certificates.NewOCSPManager(cfg, obs, httpClient, certificates.RealOCSPRequest)
 
 	// Initialize mTLS component
-	mtlsHandler := mtls.NewMTLS(logger, certLoader, certValidator)
+	mtlsHandler := mtls.NewMTLS(obs, certLoader, certValidator)
 
 	// Create Security instance
 	security := &Security{
@@ -59,7 +59,7 @@ func NewSecurity(cfg *config.SecurityConfig, logger *zap.Logger) (*Security, err
 		CRLManager:    crlManager,
 		OCSPManager:   ocspManager,
 		MTLSHandler:   mtlsHandler,
-		Logger:        logger,
+		Observability: obs,
 	}
 
 	// Perform initial setup if needed (e.g., load certificates)
@@ -72,26 +72,26 @@ func NewSecurity(cfg *config.SecurityConfig, logger *zap.Logger) (*Security, err
 
 // SetupMTLS sets up mTLS for secure communication.
 func (s *Security) SetupMTLS(ctx context.Context) error {
-	s.Logger.Info("Setting up mTLS...")
+	s.Observability.Logger.Info("Setting up mTLS...")
 	_, err := s.MTLSHandler.ConfigureMTLS(ctx)
 	return err
 }
 
 // LoadCertificates loads all necessary certificates for the system.
 func (s *Security) LoadCertificates() error {
-	s.Logger.Info("Loading certificates...")
+	s.Observability.Logger.Info("Loading certificates...")
 	return s.CertLoader.LoadCertificates()
 }
 
 // ValidateCertificate validates a given certificate.
 func (s *Security) ValidateCertificate(certPath string) error {
-	s.Logger.Info("Validating certificate...", zap.String("certPath", certPath))
+	s.Observability.Logger.Info("Validating certificate...", zap.String("certPath", certPath))
 	return s.CertValidator.ValidateCertificate(certPath)
 }
 
 // CheckOCSPStatus checks the OCSP status of a certificate.
 func (s *Security) CheckOCSPStatus(certPath string) error {
-	s.Logger.Info("Checking OCSP status...", zap.String("certPath", certPath))
+	s.Observability.Logger.Info("Checking OCSP status...", zap.String("certPath", certPath))
 
 	// Read the certificate from the provided path
 	certPEM, err := os.ReadFile(certPath)
@@ -118,6 +118,11 @@ func (s *Security) CheckOCSPStatus(certPath string) error {
 
 // RevokeCertificates handles certificate revocation checks using CRL.
 func (s *Security) RevokeCertificates(ctx context.Context, cert *x509.Certificate) error {
-	s.Logger.Info("Revoke certificates using CRL...")
+	s.Observability.Logger.Info("Revoke certificates using CRL...")
 	return s.CRLManager.CheckCRL(cert)
+}
+
+// NewScrubber initializes a new Scrubber instance
+func NewScrubber() *utils.Scrubber {
+	return utils.NewScrubber()
 }
