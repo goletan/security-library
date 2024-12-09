@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
-	"github.com/goletan/security/shared/scrubber"
 	"os"
 
 	"github.com/goletan/observability/pkg"
@@ -44,13 +43,13 @@ func NewSecurity(cfg *config.SecurityConfig, obs *observability.Observability) (
 	}
 
 	// Initialize certificate components
-	certLoader := certificates.NewCertLoader(cfg, obs)
-	certValidator := certificates.NewCertValidator(cfg, obs, httpClient)
-	crlManager := certificates.NewCRLManager(cfg, obs, httpClient)
-	ocspManager := certificates.NewOCSPManager(cfg, obs, httpClient, certificates.RealOCSPRequest)
+	certLoader := certificates.NewCertLoader(cfg, obs.Logger)
+	certValidator := certificates.NewCertValidator(cfg, obs.Logger, httpClient)
+	crlManager := certificates.NewCRLManager(cfg, obs.Logger, httpClient)
+	ocspManager := certificates.NewOCSPManager(cfg, obs.Logger, httpClient, certificates.RealOCSPRequest)
 
 	// Initialize mTLS component
-	mtlsHandler := mtls.NewMTLS(obs, certLoader, certValidator)
+	mtlsHandler := mtls.NewMTLS(cfg, obs.Logger, certLoader, certValidator)
 
 	// Create Security instance
 	security := &Security{
@@ -121,9 +120,4 @@ func (s *Security) CheckOCSPStatus(certPath string) error {
 func (s *Security) RevokeCertificates(ctx context.Context, cert *x509.Certificate) error {
 	s.Observability.Logger.Info("Revoke certificates using CRL...")
 	return s.CRLManager.CheckCRL(cert)
-}
-
-// NewScrubber initializes a new scrubber instance
-func NewScrubber() *scrubber.Scrubber {
-	return scrubber.NewScrubber()
 }

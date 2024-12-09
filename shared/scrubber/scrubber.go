@@ -24,7 +24,7 @@ func getDefaultPatterns() []*regexp.Regexp {
 
 	return []*regexp.Regexp{
 		// Sensitive URL segments
-		regexp.MustCompile(`(?i)(\/(user|session|auth|token|private|login|logout|register))([\/\w\-%]*)?`),
+		regexp.MustCompile(`(?i)(/(user|session|auth|token|private|login|logout|register))([/\w\-%]*)?`),
 		// Capture key-value pairs with flexible separators, including embedded sensitive terms.
 		regexp.MustCompile(`(?i)(\w*(password|secret|token|apikey|sessionid|key|passphrase|pin|auth|passkeys|log)\w*)\s*[:=]?\s*['"]?([^\s,'"]+)['"]?`),
 		// Broaden keyword matching for embedded contexts of sensitive terms.

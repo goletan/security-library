@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goletan/observability/pkg"
+	"github.com/goletan/observability/shared/logger"
 	"github.com/goletan/security/config"
 	"github.com/goletan/security/internal/utils"
 	"go.uber.org/zap"
@@ -19,7 +19,7 @@ import (
 )
 
 type CertValidator struct {
-	obs         *observability.Observability
+	logger      *logger.ZapLogger
 	crlCache    map[string]*x509.RevocationList
 	cacheMutex  sync.Mutex
 	httpClient  *http.Client
@@ -33,9 +33,9 @@ type RetryPolicy struct {
 }
 
 // NewCertValidator initializes a new CertValidator with the provided logger and HTTP client.
-func NewCertValidator(cfg *config.SecurityConfig, obs *observability.Observability, httpClient *http.Client) *CertValidator {
+func NewCertValidator(cfg *config.SecurityConfig, log *logger.ZapLogger, httpClient *http.Client) *CertValidator {
 	return &CertValidator{
-		obs:         obs,
+		logger:      log,
 		crlCache:    make(map[string]*x509.RevocationList),
 		httpClient:  httpClient,
 		retryPolicy: RetryPolicy(cfg.Security.Certificates.RetryPolicy),
@@ -64,7 +64,7 @@ func (cv *CertValidator) ValidateCertificate(certPath string) error {
 		return fmt.Errorf("failed CRL validation: %w", err)
 	}
 
-	cv.obs.Logger.Info("Certificate validation passed", zap.String("subjectCN", cert.Subject.CommonName))
+	cv.logger.Info("Certificate validation passed", zap.String("subjectCN", cert.Subject.CommonName))
 	return nil
 }
 
@@ -121,27 +121,35 @@ func (cv *CertValidator) verifyOCSP(cert *x509.Certificate, issuer *x509.Certifi
 		if err == nil {
 			break
 		}
-		cv.obs.Logger.Warn("OCSP request failed, retrying...", zap.String("ocspURL", ocspURL), zap.Int("attempt", attempt), zap.Error(err))
+		cv.logger.Warn("OCSP request failed, retrying...", zap.String("ocspURL", ocspURL), zap.Int("attempt", attempt), zap.Error(err))
 		time.Sleep(cv.retryPolicy.Backoff + time.Duration(attempt)*cv.retryPolicy.Jitter)
 	}
 
 	if err != nil {
 		return fmt.Errorf("OCSP check failed after retries: %w", err)
 	}
-	defer resp.Body.Close()
 
-	ocspBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read OCSP response: %w", err)
-	}
+	if resp != nil {
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				cv.logger.Error("Error closing OCSP response body", zap.Error(err))
+			}
+		}(resp.Body)
 
-	ocspResponse, err := ocsp.ParseResponse(ocspBytes, issuer)
-	if err != nil {
-		return fmt.Errorf("failed to parse OCSP response: %w", err)
-	}
+		ocspBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read OCSP response: %w", err)
+		}
 
-	if ocspResponse.Status == ocsp.Revoked {
-		return fmt.Errorf("certificate is revoked: OCSP status revoked")
+		ocspResponse, err := ocsp.ParseResponse(ocspBytes, issuer)
+		if err != nil {
+			return fmt.Errorf("failed to parse OCSP response: %w", err)
+		}
+
+		if ocspResponse.Status == ocsp.Revoked {
+			return fmt.Errorf("certificate is revoked: OCSP status revoked")
+		}
 	}
 	return nil
 }
@@ -170,7 +178,7 @@ func (cv *CertValidator) verifyCRL(cert *x509.Certificate) error {
 	for _, crlURL := range cert.CRLDistributionPoints {
 		crl, err := cv.getCRL(crlURL)
 		if err != nil {
-			cv.obs.Logger.Warn("Failed to get CRL", zap.String("crlURL", crlURL), zap.Error(err))
+			cv.logger.Warn("Failed to get CRL", zap.String("crlURL", crlURL), zap.Error(err))
 			continue
 		}
 
@@ -199,15 +207,20 @@ func (cv *CertValidator) checkOCSP(cert *x509.Certificate, issuer *x509.Certific
 
 	// Use the first OCSP server URL specified in the certificate
 	ocspURL := cert.OCSPServer[0]
-	cv.obs.Logger.Info("Attempting OCSP check with server URL", zap.String("ocspURL", ocspURL))
+	cv.logger.Info("Attempting OCSP check with server URL", zap.String("ocspURL", ocspURL))
 
 	// Attempt to send the OCSP request to the server
 	resp, err := http.Post(ocspURL, "application/ocsp-request", bytes.NewReader(ocspRequest))
 	if err != nil {
-		cv.obs.Logger.Error("Error contacting OCSP server", zap.Error(err))
+		cv.logger.Error("Error contacting OCSP server", zap.Error(err))
 		return nil, fmt.Errorf("failed to send OCSP request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			cv.logger.Error("Error closing OCSP response body", zap.Error(err))
+		}
+	}(resp.Body)
 
 	// Check if the response status code is successful
 	if resp.StatusCode != http.StatusOK {
@@ -236,25 +249,25 @@ func (cv *CertValidator) checkCRL(cert *x509.Certificate) error {
 
 	// Iterate over CRL distribution points to find and validate the CRL.
 	for _, crlURL := range cert.CRLDistributionPoints {
-		cv.obs.Logger.Info("Attempting CRL check", zap.String("crlURL", crlURL))
+		cv.logger.Info("Attempting CRL check", zap.String("crlURL", crlURL))
 
 		// Attempt to fetch or use the cached CRL
 		crl, err := cv.getCRL(crlURL)
 		if err != nil {
-			cv.obs.Logger.Warn("Failed to get CRL", zap.String("crlURL", crlURL), zap.Error(err))
+			cv.logger.Warn("Failed to get CRL", zap.String("crlURL", crlURL), zap.Error(err))
 			continue
 		}
 
 		// Check if the certificate is in the CRL
 		for _, revokedCert := range crl.RevokedCertificateEntries {
 			if revokedCert.SerialNumber.Cmp(cert.SerialNumber) == 0 {
-				cv.obs.Logger.Warn("Certificate is revoked according to CRL", zap.String("crlURL", crlURL))
+				cv.logger.Warn("Certificate is revoked according to CRL", zap.String("crlURL", crlURL))
 				return fmt.Errorf("certificate is revoked: serial number %s", cert.SerialNumber.String())
 			}
 		}
 	}
 
-	cv.obs.Logger.Info("CRL check passed, certificate not revoked")
+	cv.logger.Info("CRL check passed, certificate not revoked")
 	return nil
 }
 
@@ -265,7 +278,7 @@ func (cv *CertValidator) getCRL(crlURL string) (*x509.RevocationList, error) {
 
 	// Check if the CRL is already cached
 	if cachedCRL, exists := cv.crlCache[crlURL]; exists {
-		cv.obs.Logger.Info("Using cached CRL", zap.String("crlURL", crlURL))
+		cv.logger.Info("Using cached CRL", zap.String("crlURL", crlURL))
 		return cachedCRL, nil
 	}
 
@@ -274,7 +287,12 @@ func (cv *CertValidator) getCRL(crlURL string) (*x509.RevocationList, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch CRL from URL %s: %w", crlURL, err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			cv.logger.Error("Error closing CRL response body", zap.Error(err))
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("CRL server returned non-OK status: %v", resp.Status)
@@ -295,6 +313,6 @@ func (cv *CertValidator) getCRL(crlURL string) (*x509.RevocationList, error) {
 	crl.NextUpdate = time.Now().Add(1 * time.Hour)
 	cv.crlCache[crlURL] = crl
 
-	cv.obs.Logger.Info("Fetched and cached CRL", zap.String("crlURL", crlURL))
+	cv.logger.Info("Fetched and cached CRL", zap.String("crlURL", crlURL))
 	return crl, nil
 }

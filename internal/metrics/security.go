@@ -7,7 +7,6 @@ import (
 
 type SecurityMetrics struct{}
 
-// Security Metrics: Track security events
 var (
 	SecurityEvents = prometheus.NewCounterVec(
 		prometheus.CounterOpts{

@@ -6,7 +6,7 @@ import (
 	"errors"
 )
 
-// Helper to parse a PEM encoded certificate
+// ParsePEMCertificate Helper to parse a PEM encoded certificate
 func ParsePEMCertificate(certPEM []byte) (*x509.Certificate, error) {
 	block, _ := pem.Decode(certPEM)
 	if block == nil || block.Type != "CERTIFICATE" {

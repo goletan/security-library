@@ -1,23 +1,22 @@
-// /security/internal/certificates/crl_manager.go
 package certificates
 
 import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	observability "github.com/goletan/observability/pkg"
 	"io"
 	"math/big"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/goletan/observability/shared/logger"
 	"github.com/goletan/security/config"
 	"go.uber.org/zap"
 )
 
 type CRLManager struct {
-	obs        *observability.Observability
+	logger     *logger.ZapLogger
 	crlCache   sync.Map // Concurrent safe map for caching CRLs
 	httpClient *http.Client
 	cacheTTL   time.Duration
@@ -30,9 +29,9 @@ type crlCacheEntry struct {
 }
 
 // NewCRLManager initializes a new CRLManager with the given parameters.
-func NewCRLManager(cfg *config.SecurityConfig, obs *observability.Observability, httpClient *http.Client) *CRLManager {
+func NewCRLManager(cfg *config.SecurityConfig, log *logger.ZapLogger, httpClient *http.Client) *CRLManager {
 	return &CRLManager{
-		obs:        obs,
+		logger:     log,
 		httpClient: httpClient,
 		cacheTTL:   cfg.Security.CRL.TTL,
 	}
@@ -41,7 +40,7 @@ func NewCRLManager(cfg *config.SecurityConfig, obs *observability.Observability,
 // CheckCRL performs a CRL check to verify the revocation status of the certificate.
 func (cm *CRLManager) CheckCRL(cert *x509.Certificate) error {
 	for _, url := range cert.CRLDistributionPoints {
-		cm.obs.Logger.Info("Checking CRL", zap.String("crlURL", url))
+		cm.logger.Info("Checking CRL", zap.String("crlURL", url))
 
 		// Check cache
 		crl, found := cm.getCachedCRL(url)
@@ -49,7 +48,7 @@ func (cm *CRLManager) CheckCRL(cert *x509.Certificate) error {
 			var err error
 			crl, err = cm.fetchCRLWithRetry(url, 3, 2*time.Second) // Use retry logic
 			if err != nil {
-				cm.obs.Logger.Error("Failed to fetch CRL", zap.String("crlURL", url), zap.Error(err))
+				cm.logger.Error("Failed to fetch CRL", zap.String("crlURL", url), zap.Error(err))
 				return fmt.Errorf("error fetching CRL: %w", err)
 			}
 			cm.cacheCRL(url, crl)
@@ -57,7 +56,7 @@ func (cm *CRLManager) CheckCRL(cert *x509.Certificate) error {
 
 		// Check if the certificate is revoked
 		if cm.isCertRevoked(crl, cert.SerialNumber) {
-			cm.obs.Logger.Warn("Certificate has been revoked", zap.String("crlURL", url), zap.String("serialNumber", cert.SerialNumber.String()))
+			cm.logger.Warn("Certificate has been revoked", zap.String("crlURL", url), zap.String("serialNumber", cert.SerialNumber.String()))
 			return errors.New("certificate has been revoked")
 		}
 	}
@@ -75,7 +74,7 @@ func (cm *CRLManager) fetchCRLWithRetry(url string, retries int, backoff time.Du
 			return crl, nil
 		}
 
-		cm.obs.Logger.Warn("Failed to fetch CRL, retrying...", zap.String("crlURL", url), zap.Int("attempt", attempt), zap.Error(err))
+		cm.logger.Warn("Failed to fetch CRL, retrying...", zap.String("crlURL", url), zap.Int("attempt", attempt), zap.Error(err))
 		time.Sleep(backoff)
 	}
 
@@ -88,7 +87,12 @@ func (cm *CRLManager) fetchCRL(url string) (*x509.RevocationList, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error fetching CRL from URL %s: %w", url, err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			cm.logger.Error("Failed to close CRL response body", zap.Error(err))
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("CRL server returned non-OK status: %v", resp.Status)
@@ -114,7 +118,7 @@ func (cm *CRLManager) cacheCRL(url string, crl *x509.RevocationList) {
 		expiry: time.Now().Add(cm.cacheTTL),
 	}
 	cm.crlCache.Store(url, entry)
-	cm.obs.Logger.Info("CRL cached successfully", zap.String("crlURL", url))
+	cm.logger.Info("CRL cached successfully", zap.String("crlURL", url))
 }
 
 // getCachedCRL retrieves a cached CRL if it exists and is still valid.
@@ -128,11 +132,11 @@ func (cm *CRLManager) getCachedCRL(url string) (*x509.RevocationList, bool) {
 	if time.Now().After(entry.expiry) {
 		// If the CRL is expired, remove it from the cache
 		cm.crlCache.Delete(url)
-		cm.obs.Logger.Info("CRL expired and removed from cache", zap.String("crlURL", url))
+		cm.logger.Info("CRL expired and removed from cache", zap.String("crlURL", url))
 		return nil, false
 	}
 
-	cm.obs.Logger.Info("Using cached CRL", zap.String("crlURL", url))
+	cm.logger.Info("Using cached CRL", zap.String("crlURL", url))
 	return entry.crl, true
 }
 

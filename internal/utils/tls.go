@@ -1,4 +1,3 @@
-// /security/internal/utils/tls_utils.go
 package utils
 
 import (

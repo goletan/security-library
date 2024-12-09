@@ -1,4 +1,3 @@
-// /security/internal/utils/http_client.go
 package utils
 
 import (
