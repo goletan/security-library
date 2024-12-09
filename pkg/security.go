@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"github.com/goletan/security/shared/scrubber"
 	"os"
 
 	"github.com/goletan/observability/pkg"
@@ -122,7 +123,7 @@ func (s *Security) RevokeCertificates(ctx context.Context, cert *x509.Certificat
 	return s.CRLManager.CheckCRL(cert)
 }
 
-// NewScrubber initializes a new Scrubber instance
-func NewScrubber() *utils.Scrubber {
-	return utils.NewScrubber()
+// NewScrubber initializes a new scrubber instance
+func NewScrubber() *scrubber.Scrubber {
+	return scrubber.NewScrubber()
 }

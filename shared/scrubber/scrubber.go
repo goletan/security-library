@@ -1,5 +1,4 @@
-// /observability/utils/scrubber.go
-package utils
+package scrubber
 
 import (
 	"fmt"

@@ -1,5 +1,4 @@
-// /observability/utils/scrubber_test.go
-package utils
+package scrubber
 
 import (
 	"testing"
