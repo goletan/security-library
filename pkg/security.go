@@ -1,7 +1,6 @@
 package security
 
 import (
-	"context"
 	"crypto/x509"
 	"fmt"
 	"os"
@@ -14,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Security is the main entry point for all security-related operations in Goletan.
+// Security is a struct that centralizes security-related functionalities and dependencies for a software application.
 type Security struct {
 	Cfg           *config.SecurityConfig
 	CertLoader    *certificates.CertLoader
@@ -23,14 +22,6 @@ type Security struct {
 	OCSPManager   *certificates.OCSPManager
 	MTLSHandler   *mtls.MTLS
 	Observability *observability.Observability
-}
-
-type SecurityInterface interface {
-	SetupMTLS() error
-	LoadCertificates() error
-	ValidateCertificate(certPath string) error
-	CheckOCSPStatus(certPath string) error
-	RevokeCertificates(ctx context.Context, cert *x509.Certificate) error
 }
 
 // NewSecurity initializes a new Security instance.
@@ -71,9 +62,9 @@ func NewSecurity(cfg *config.SecurityConfig, obs *observability.Observability) (
 }
 
 // SetupMTLS sets up mTLS for secure communication.
-func (s *Security) SetupMTLS(ctx context.Context) error {
+func (s *Security) SetupMTLS() error {
 	s.Observability.Logger.Info("Setting up mTLS...")
-	_, err := s.MTLSHandler.ConfigureMTLS(ctx)
+	_, err := s.MTLSHandler.ConfigureMTLS()
 	return err
 }
 
@@ -117,7 +108,7 @@ func (s *Security) CheckOCSPStatus(certPath string) error {
 }
 
 // RevokeCertificates handles certificate revocation checks using CRL.
-func (s *Security) RevokeCertificates(ctx context.Context, cert *x509.Certificate) error {
+func (s *Security) RevokeCertificates(cert *x509.Certificate) error {
 	s.Observability.Logger.Info("Revoke certificates using CRL...")
 	return s.CRLManager.CheckCRL(cert)
 }

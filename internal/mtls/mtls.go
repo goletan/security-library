@@ -1,7 +1,6 @@
 package mtls
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -31,7 +30,7 @@ func NewMTLS(cfg *config.SecurityConfig, log *logger.ZapLogger, certLoader *cert
 }
 
 // ConfigureMTLS sets up mutual TLS for secure communication between services, including certificate revocation checks.
-func (m *MTLS) ConfigureMTLS(ctx context.Context) (*tls.Config, error) {
+func (m *MTLS) ConfigureMTLS() (*tls.Config, error) {
 	// Load the server TLS configuration
 	serverCert, err := m.certLoader.LoadTLSCertificate(m.cfg.Security.Certificates.ServerCertPath, m.cfg.Security.Certificates.ServerKeyPath)
 	if err != nil {
@@ -60,7 +59,7 @@ func (m *MTLS) ConfigureMTLS(ctx context.Context) (*tls.Config, error) {
 		},
 		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 			m.logger.Info("Verifying peer certificate")
-			return m.certValidator.VerifyPeerCertificate(rawCerts, verifiedChains)
+			return m.certValidator.VerifyPeerCertificate(verifiedChains)
 		},
 	}
 

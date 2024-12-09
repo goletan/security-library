@@ -5,10 +5,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type SecurityMetrics struct{}
+type Metrics struct{}
 
 var (
-	SecurityEvents = prometheus.NewCounterVec(
+	// Events is a Prometheus counter vector that tracks security-related events, such as failed authentications.
+	Events = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "goletan",
 			Subsystem: "security",
@@ -19,19 +20,21 @@ var (
 	)
 )
 
+// InitMetrics registers the Metrics with the observability manager.
 func InitMetrics(observer *observability.Observability) {
-	observer.Metrics.Register(&SecurityMetrics{})
+	observer.Metrics.Register(&Metrics{})
 }
 
-func (em *SecurityMetrics) Register() error {
-	if err := prometheus.Register(SecurityEvents); err != nil {
+// Register registers the Metrics instance with the Prometheus package. It returns an error if registration fails.
+func (em *Metrics) Register() error {
+	if err := prometheus.Register(Events); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// RecordSecurityEvent records a security-related event.
+// RecordSecurityEvent logs a security event with specified type, service, and severity, and increments the event counter.
 func RecordSecurityEvent(eventType, service, severity string) {
-	SecurityEvents.WithLabelValues(eventType, service, severity).Inc()
+	Events.WithLabelValues(eventType, service, severity).Inc()
 }

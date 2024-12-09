@@ -37,7 +37,7 @@ func InitializeHTTPClient(cfg *config.SecurityConfig) (*http.Client, error) {
 
 	// Initialize the HTTP client with timeout and transport settings
 	httpClient := &http.Client{
-		Timeout:   time.Duration(cfg.Security.HTTPClient.Timeout),
+		Timeout:   cfg.Security.HTTPClient.Timeout,
 		Transport: transport,
 	}
 

@@ -206,24 +206,25 @@ func (cl *CertLoader) setupTLSConfig(cert *tls.Certificate, caCertPool *x509.Cer
 // checkFilePermissions checks that the file has the correct permissions to prevent unauthorized access and is owned by the current user.
 func (cl *CertLoader) checkFilePermissions(filePath string) error {
 	info, err := os.Stat(filePath)
-	if errors.Is(err, os.ErrNotExist) {
-		return err
-	}
 	if err != nil {
-		cl.logger.Error("unable to access file: %w", zap.Error(err))
+		if errors.Is(err, os.ErrNotExist) {
+			cl.logger.Error("File does not exist", zap.String("filePath", filePath))
+			return fmt.Errorf("file does not exist: %w", err)
+		}
+		cl.logger.Error("Unable to access file", zap.String("filePath", filePath), zap.Error(err))
 		return fmt.Errorf("unable to access file: %w", err)
 	}
 
 	// Check file permissions (must not be accessible by group or others)
 	if info.Mode().Perm()&(syscall.S_IRWXG|syscall.S_IRWXO) != 0 {
-		cl.logger.Error("file %s has too permissive permissions: %w", zap.String("filePath", filePath), zap.Error(err))
+		cl.logger.Error("File has too permissive permissions", zap.String("filePath", filePath), zap.Uint32("permissions", uint32(info.Mode().Perm())))
 		return fmt.Errorf("file %s has too permissive permissions", filePath)
 	}
 
 	// Explicitly check for secure permissions (600 or 400)
 	if info.Mode().Perm() != 0600 && info.Mode().Perm() != 0400 {
-		cl.logger.Error(fmt.Sprintf("file %s has invalid permissions: %o, expected 600 or 400: %w", filePath, info.Mode().Perm()), zap.Error(err))
-		return fmt.Errorf(fmt.Sprintf("file %s has invalid permissions: %o, expected 600 or 400: %w", filePath, info.Mode().Perm()))
+		cl.logger.Error("File has invalid permissions", zap.String("filePath", filePath), zap.Uint32("permissions", uint32(info.Mode().Perm())), zap.Uint32s("expectedPermissions", []uint32{0600, 0400}))
+		return fmt.Errorf("file %s has invalid permissions: %o, expected 600 or 400", filePath, info.Mode().Perm())
 	}
 
 	return nil

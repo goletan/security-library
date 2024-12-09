@@ -1,12 +1,12 @@
 package certificates
 
 import (
+	"bytes"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -83,41 +83,51 @@ func (o *OCSPManager) sendOCSPRequestWithRetry(ocspURL string, request []byte, r
 	for attempt := 1; attempt <= retries; attempt++ {
 		o.logger.Info("Sending OCSP request", zap.String("ocspURL", ocspURL), zap.Int("attempt", attempt))
 
-		httpResp, err := o.OCSPRequestFunc(o.HTTPClient, ocspURL, "application/ocsp-request", strings.NewReader(string(request)))
-		if err == nil {
-			defer func(Body io.ReadCloser) {
-				err := Body.Close()
-				if err != nil {
-					o.logger.Error("Failed to close OCSP response body", zap.Error(err))
-					return
-				}
-			}(httpResp.Body)
-
-			ocspBytes, err := io.ReadAll(httpResp.Body)
-			if err != nil {
-				o.logger.Error("Failed to read OCSP response", zap.Error(err))
-				return nil, fmt.Errorf("failed to read OCSP response: %w", err)
-			}
-
-			ocspResp, err = ocsp.ParseResponse(ocspBytes, nil)
-			if err != nil {
-				o.logger.Error("Failed to parse OCSP response", zap.Error(err))
-				return nil, fmt.Errorf("failed to parse OCSP response: %w", err)
-			}
-
-			if ocspResp.Status == ocsp.Revoked {
-				o.logger.Warn("Certificate is revoked according to OCSP", zap.String("ocspURL", ocspURL))
-				return ocspResp, errors.New("certificate is revoked")
-			}
-
-			return ocspResp, nil
+		httpResp, err := o.OCSPRequestFunc(o.HTTPClient, ocspURL, "application/ocsp-request", bytes.NewReader(request))
+		if err != nil {
+			o.logger.Warn("Failed to send OCSP request, retrying...", zap.String("ocspURL", ocspURL), zap.Int("attempt", attempt), zap.Error(err))
+			time.Sleep(backoff)
+			continue
 		}
 
-		o.logger.Warn("Failed to send OCSP request, retrying...", zap.String("ocspURL", ocspURL), zap.Int("attempt", attempt), zap.Error(err))
+		ocspResp, err = o.handleOCSPResponse(httpResp)
+		if err == nil {
+			return ocspResp, nil // Successfully processed OCSP response
+		}
+
+		o.logger.Warn("Encountered error while processing OCSP response, retrying...", zap.String("ocspURL", ocspURL), zap.Int("attempt", attempt), zap.Error(err))
 		time.Sleep(backoff)
 	}
 
 	return nil, fmt.Errorf("failed to send OCSP request after %d retries: %w", retries, err)
+}
+
+// handleOCSPResponse processes the HTTP response and closes the body safely.
+func (o *OCSPManager) handleOCSPResponse(httpResp *http.Response) (*ocsp.Response, error) {
+	defer func() {
+		if err := httpResp.Body.Close(); err != nil {
+			o.logger.Error("Failed to close OCSP response body", zap.Error(err))
+		}
+	}()
+
+	ocspBytes, err := io.ReadAll(httpResp.Body)
+	if err != nil {
+		o.logger.Error("Failed to read OCSP response", zap.Error(err))
+		return nil, fmt.Errorf("failed to read OCSP response: %w", err)
+	}
+
+	ocspResp, err := ocsp.ParseResponse(ocspBytes, nil)
+	if err != nil {
+		o.logger.Error("Failed to parse OCSP response", zap.Error(err))
+		return nil, fmt.Errorf("failed to parse OCSP response: %w", err)
+	}
+
+	if ocspResp.Status == ocsp.Revoked {
+		o.logger.Warn("Certificate is revoked according to OCSP", zap.String("ocspURL", httpResp.Request.URL.String()))
+		return ocspResp, errors.New("certificate is revoked")
+	}
+
+	return ocspResp, nil
 }
 
 // CacheOCSPResponse stores an OCSP response in cache.

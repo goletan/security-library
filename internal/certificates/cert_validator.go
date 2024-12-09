@@ -69,7 +69,7 @@ func (cv *CertValidator) ValidateCertificate(certPath string) error {
 }
 
 // VerifyPeerCertificate performs OCSP and CRL checks on the peer certificate to ensure it has not been revoked.
-func (cv *CertValidator) VerifyPeerCertificate(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+func (cv *CertValidator) VerifyPeerCertificate(verifiedChains [][]*x509.Certificate) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(verifiedChains))
 
