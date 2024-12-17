@@ -4,9 +4,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	observability "github.com/goletan/observability/pkg"
 	"github.com/goletan/security/config"
 
-	"github.com/goletan/observability/shared/logger"
 	"github.com/goletan/security/internal/certificates"
 	"go.uber.org/zap"
 )
@@ -14,16 +14,16 @@ import (
 // MTLS struct encapsulates the configuration and logger for mTLS.
 type MTLS struct {
 	cfg           *config.SecurityConfig
-	logger        *logger.ZapLogger
+	obs           *observability.Observability
 	certLoader    *certificates.CertLoader
 	certValidator *certificates.CertValidator
 }
 
 // NewMTLS initializes a new MTLS instance with the required dependencies.
-func NewMTLS(cfg *config.SecurityConfig, log *logger.ZapLogger, certLoader *certificates.CertLoader, certValidator *certificates.CertValidator) *MTLS {
+func NewMTLS(cfg *config.SecurityConfig, obs *observability.Observability, certLoader *certificates.CertLoader, certValidator *certificates.CertValidator) *MTLS {
 	return &MTLS{
 		cfg:           cfg,
-		logger:        log,
+		obs:           obs,
 		certLoader:    certLoader,
 		certValidator: certValidator,
 	}
@@ -34,14 +34,14 @@ func (m *MTLS) ConfigureMTLS() (*tls.Config, error) {
 	// Load the server TLS configuration
 	serverCert, err := m.certLoader.LoadTLSCertificate(m.cfg.Security.Certificates.ServerCertPath, m.cfg.Security.Certificates.ServerKeyPath)
 	if err != nil {
-		m.logger.Error("Failed to load server certificate and key", zap.Error(err))
+		m.obs.Logger.Error("Failed to load server certificate and key", zap.Error(err))
 		return nil, fmt.Errorf("failed to load server certificate and key: %w", err)
 	}
 
 	// Load the CA certificate pool
 	caCertPool, _, err := m.certLoader.LoadCACertificate(m.cfg.Security.Certificates.CACertPath)
 	if err != nil {
-		m.logger.Error("Failed to load CA certificate", zap.Error(err))
+		m.obs.Logger.Error("Failed to load CA certificate", zap.Error(err))
 		return nil, fmt.Errorf("failed to load CA certificate: %w", err)
 	}
 
@@ -58,11 +58,11 @@ func (m *MTLS) ConfigureMTLS() (*tls.Config, error) {
 			tls.TLS_CHACHA20_POLY1305_SHA256,
 		},
 		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-			m.logger.Info("Verifying peer certificate")
+			m.obs.Logger.Info("Verifying peer certificate")
 			return m.certValidator.VerifyPeerCertificate(verifiedChains)
 		},
 	}
 
-	m.logger.Info("mTLS configuration successfully completed with enhanced security and revocation checks.")
+	m.obs.Logger.Info("mTLS configuration successfully completed with enhanced security and revocation checks.")
 	return tlsConfig, nil
 }
