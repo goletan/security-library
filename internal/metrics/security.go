@@ -1,7 +1,7 @@
 package security
 
 import (
-	"github.com/goletan/observability/pkg"
+	"github.com/goletan/observability-library/pkg"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

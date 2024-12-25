@@ -5,9 +5,9 @@ import (
 	"crypto/x509"
 	"fmt"
 	observability "github.com/goletan/observability-library/pkg"
-	"github.com/goletan/security/config"
+	"github.com/goletan/security-library/config"
 
-	"github.com/goletan/security/internal/certificates"
+	"github.com/goletan/security-library/internal/certificates"
 	"go.uber.org/zap"
 )
 

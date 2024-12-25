@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goletan/observability/pkg"
-	"github.com/goletan/security/config"
+	"github.com/goletan/observability-library/pkg"
+	"github.com/goletan/security-library/config"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ocsp"
 )

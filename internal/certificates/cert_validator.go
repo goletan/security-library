@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goletan/security/config"
-	"github.com/goletan/security/internal/utils"
+	"github.com/goletan/security-library/config"
+	"github.com/goletan/security-library/internal/utils"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ocsp"
 )

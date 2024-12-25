@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/goletan/observability/pkg"
-	"github.com/goletan/security/config"
-	"github.com/goletan/security/internal/certificates"
-	"github.com/goletan/security/internal/mtls"
-	"github.com/goletan/security/internal/utils"
+	"github.com/goletan/observability-library/pkg"
+	"github.com/goletan/security-library/config"
+	"github.com/goletan/security-library/internal/certificates"
+	"github.com/goletan/security-library/internal/mtls"
+	"github.com/goletan/security-library/internal/utils"
 	"go.uber.org/zap"
 )
 

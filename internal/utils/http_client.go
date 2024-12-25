@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/goletan/security/config"
+	"github.com/goletan/security-library/config"
 )
 
 // InitializeHTTPClient configures the HTTP client with enhanced security-library settings.

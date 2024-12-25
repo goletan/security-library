@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goletan/security/config"
+	"github.com/goletan/security-library/config"
 	"go.uber.org/zap"
 )
 
