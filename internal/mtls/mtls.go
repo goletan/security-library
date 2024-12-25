@@ -4,14 +4,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	observability "github.com/goletan/observability/pkg"
+	observability "github.com/goletan/observability-library/pkg"
 	"github.com/goletan/security/config"
 
 	"github.com/goletan/security/internal/certificates"
 	"go.uber.org/zap"
 )
 
-// MTLS struct encapsulates the configuration and logger for mTLS.
+// MTLS struct encapsulates the configuration and logger-library for mTLS.
 type MTLS struct {
 	cfg           *config.SecurityConfig
 	obs           *observability.Observability
@@ -29,7 +29,7 @@ func NewMTLS(cfg *config.SecurityConfig, obs *observability.Observability, certL
 	}
 }
 
-// ConfigureMTLS sets up mutual TLS for secure communication between services, including certificate revocation checks.
+// ConfigureMTLS sets up mutual TLS for secure communication between services-library, including certificate revocation checks.
 func (m *MTLS) ConfigureMTLS() (*tls.Config, error) {
 	// Load the server TLS configuration
 	serverCert, err := m.certLoader.LoadTLSCertificate(m.cfg.Security.Certificates.ServerCertPath, m.cfg.Security.Certificates.ServerKeyPath)
@@ -45,7 +45,7 @@ func (m *MTLS) ConfigureMTLS() (*tls.Config, error) {
 		return nil, fmt.Errorf("failed to load CA certificate: %w", err)
 	}
 
-	// Construct the TLS configuration with enhanced security settings
+	// Construct the TLS configuration with enhanced security-library settings
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{*serverCert},
 		ClientCAs:    caCertPool,
@@ -63,6 +63,6 @@ func (m *MTLS) ConfigureMTLS() (*tls.Config, error) {
 		},
 	}
 
-	m.obs.Logger.Info("mTLS configuration successfully completed with enhanced security and revocation checks.")
+	m.obs.Logger.Info("mTLS configuration successfully completed with enhanced security-library and revocation checks.")
 	return tlsConfig, nil
 }

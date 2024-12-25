@@ -1,4 +1,4 @@
-module github.com/goletan/security
+module github.com/goletan/security-library
 
 go 1.23
 

@@ -31,5 +31,5 @@ type SecurityConfig struct {
 		OCSP struct {
 			TTL time.Duration `mapstructure:"ttl"`
 		} `mapstructure:"ocsp"`
-	} `mapstructure:"security"`
+	} `mapstructure:"security-library"`
 }

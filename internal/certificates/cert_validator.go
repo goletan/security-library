@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	observability "github.com/goletan/observability/pkg"
+	observability "github.com/goletan/observability-library/pkg"
 	"io"
 	"net/http"
 	"os"
@@ -32,7 +32,7 @@ type RetryPolicy struct {
 	Jitter     time.Duration
 }
 
-// NewCertValidator initializes a new CertValidator with the provided logger and HTTP client.
+// NewCertValidator initializes a new CertValidator with the provided logger-library and HTTP client.
 func NewCertValidator(cfg *config.SecurityConfig, obs *observability.Observability, httpClient *http.Client) *CertValidator {
 	return &CertValidator{
 		obs:         obs,

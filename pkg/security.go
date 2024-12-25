@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Security is a struct that centralizes security-related functionalities and dependencies for a software application.
+// Security is a struct that centralizes security-library-related functionalities and dependencies for a software application.
 type Security struct {
 	Cfg           *config.SecurityConfig
 	CertLoader    *certificates.CertLoader

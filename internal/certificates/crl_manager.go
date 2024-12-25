@@ -4,7 +4,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	observability "github.com/goletan/observability/pkg"
+	observability "github.com/goletan/observability-library/pkg"
 	"io"
 	"math/big"
 	"net/http"

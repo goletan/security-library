@@ -20,7 +20,7 @@ type CertLoader struct {
 	obs *observability.Observability
 }
 
-// NewCertLoader initializes a new CertLoader with the required configuration and logger.
+// NewCertLoader initializes a new CertLoader with the required configuration and logger-library.
 func NewCertLoader(cfg *config.SecurityConfig, obs *observability.Observability) *CertLoader {
 	return &CertLoader{
 		cfg: cfg,
@@ -57,7 +57,7 @@ func (cl *CertLoader) LoadCertificates() error {
 	return nil
 }
 
-// LoadTLSCertificate loads a TLS certificate and private key from specified paths with enhanced security checks.
+// LoadTLSCertificate loads a TLS certificate and private key from specified paths with enhanced security-library checks.
 func (cl *CertLoader) LoadTLSCertificate(certPath, keyPath string) (*tls.Certificate, error) {
 	cl.obs.Logger.Info("Loading certificate and key", zap.String("certPath", certPath), zap.String("keyPath", keyPath))
 

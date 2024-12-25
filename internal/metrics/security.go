@@ -8,19 +8,19 @@ import (
 type Metrics struct{}
 
 var (
-	// Events is a Prometheus counter vector that tracks security-related events, such as failed authentications.
+	// Events is a Prometheus counter vector that tracks security-library-related events-service, such as failed authentications.
 	Events = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "goletan",
-			Subsystem: "security",
+			Subsystem: "security-library",
 			Name:      "events_count",
-			Help:      "Counts security-related events like failed authentications.",
+			Help:      "Counts security-library-related events-service like failed authentications.",
 		},
 		[]string{"event_type", "service", "severity"},
 	)
 )
 
-// InitMetrics registers the Metrics with the observability manager.
+// InitMetrics registers the Metrics with the observability-library manager.
 func InitMetrics(observer *observability.Observability) {
 	observer.Metrics.Register(&Metrics{})
 }
@@ -34,7 +34,7 @@ func (em *Metrics) Register() error {
 	return nil
 }
 
-// RecordSecurityEvent logs a security event with specified type, service, and severity, and increments the event counter.
+// RecordSecurityEvent logs a security-library event with specified type, service, and severity, and increments the event counter.
 func RecordSecurityEvent(eventType, service, severity string) {
 	Events.WithLabelValues(eventType, service, severity).Inc()
 }
