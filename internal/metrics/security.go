@@ -12,9 +12,9 @@ var (
 	Events = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "goletan",
-			Subsystem: "security-library",
+			Subsystem: "security_library",
 			Name:      "events_count",
-			Help:      "Counts security-library-related events-service like failed authentications.",
+			Help:      "Counts security-library related events like failed authentications.",
 		},
 		[]string{"event_type", "service", "severity"},
 	)
